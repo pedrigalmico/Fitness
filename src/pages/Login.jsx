@@ -5,22 +5,34 @@ import { Dumbbell, UserPlus, LogIn } from "lucide-react";
 export default function Login() {
   const { login, register } = useContext(AuthContext);
   const [isRegister, setIsRegister] = useState(false);
-  const [username, setUsername] = useState("");
-  const [pin, setPin] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!username.trim() || !pin.trim()) {
+    if (!email.trim() || !password.trim()) {
       setError("Please fill in all fields");
       return;
     }
-    if (pin.length < 4) {
-      setError("PIN must be at least 4 digits");
+    if (isRegister && !name.trim()) {
+      setError("Please enter your name");
       return;
     }
-    const result = isRegister ? register(username.trim(), pin) : login(username.trim(), pin);
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
+    const result = isRegister
+      ? await register(email.trim(), password, name.trim())
+      : await login(email.trim(), password);
+    setLoading(false);
+
     if (!result.success) setError(result.error);
   };
 
@@ -65,40 +77,47 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isRegister && (
+              <div>
+                <label className="block text-xs font-bold mb-1.5" style={{ color: "#555" }}>
+                  NAME
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Mico"
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium outline-none"
+                  style={{ background: "#0A0A12", border: "1px solid #1A1A2E", color: "#E8E8F0" }}
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-bold mb-1.5" style={{ color: "#555" }}>
-                USERNAME
+                EMAIL
               </label>
               <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. Mico"
-                className="w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition-colors"
-                style={{
-                  background: "#0A0A12",
-                  border: "1px solid #1A1A2E",
-                  color: "#E8E8F0",
-                }}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@email.com"
+                className="w-full px-4 py-3 rounded-xl text-sm font-medium outline-none"
+                style={{ background: "#0A0A12", border: "1px solid #1A1A2E", color: "#E8E8F0" }}
               />
             </div>
+
             <div>
               <label className="block text-xs font-bold mb-1.5" style={{ color: "#555" }}>
-                PIN
+                PASSWORD
               </label>
               <input
                 type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-                placeholder="4-digit PIN"
-                maxLength={6}
-                className="w-full px-4 py-3 rounded-xl text-sm font-medium outline-none transition-colors"
-                style={{
-                  background: "#0A0A12",
-                  border: "1px solid #1A1A2E",
-                  color: "#E8E8F0",
-                }}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 6 characters"
+                className="w-full px-4 py-3 rounded-xl text-sm font-medium outline-none"
+                style={{ background: "#0A0A12", border: "1px solid #1A1A2E", color: "#E8E8F0" }}
               />
             </div>
 
@@ -108,17 +127,24 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl text-sm font-black text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+              disabled={loading}
+              className="w-full py-3 rounded-xl text-sm font-black text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ background: "linear-gradient(135deg, #FF6B35, #F59E0B)" }}
             >
-              {isRegister ? <UserPlus size={18} /> : <LogIn size={18} />}
-              {isRegister ? "Create Account" : "Sign In"}
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  {isRegister ? <UserPlus size={18} /> : <LogIn size={18} />}
+                  {isRegister ? "Create Account" : "Sign In"}
+                </>
+              )}
             </button>
           </form>
         </div>
 
         <p className="text-center mt-4 text-xs" style={{ color: "#555" }}>
-          Data stored locally on this device
+          Synced securely via cloud
         </p>
       </div>
     </div>
