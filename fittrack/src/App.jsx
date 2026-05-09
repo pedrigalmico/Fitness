@@ -35,8 +35,8 @@ const DEFAULT_DEMO_PROFILE = {
   goal: "recomp", level: "intermediate", activity: "moderate",
 };
 
-// Auto-seed when embedded with ?seed=1 so the onboarding wizard is skipped
-if (new URLSearchParams(window.location.search).get("seed") === "1" && !hasCompletedOnboarding()) {
+// Always seed on first load so onboarding/login is never shown in the demo
+if (!hasCompletedOnboarding()) {
   seedDemoData(DEFAULT_DEMO_PROFILE);
 }
 
