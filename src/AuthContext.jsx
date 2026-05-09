@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useCallback, useMemo } from "react";
+import { createContext, useState, useEffect, useCallback } from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -14,18 +14,12 @@ const DEMO_MODE = new URLSearchParams(window.location.search).has("seed");
 const DEMO_USER = { uid: "demo", email: "demo@fittrack.app", username: "Demo" };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(undefined); // undefined = loading
-  const [loading, setLoading] = useState(true);
-
-  if (DEMO_MODE) {
-    return (
-      <AuthContext.Provider value={{ user: DEMO_USER, login: async () => {}, register: async () => {}, logout: async () => {} }}>
-        {children}
-      </AuthContext.Provider>
-    );
-  }
+  // In demo mode: start with the fake user and loading=false so the spinner never shows
+  const [user, setUser] = useState(DEMO_MODE ? DEMO_USER : undefined);
+  const [loading, setLoading] = useState(!DEMO_MODE);
 
   useEffect(() => {
+    if (DEMO_MODE) return; // skip Firebase entirely in demo mode
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser({
@@ -42,6 +36,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (email, password) => {
+    if (DEMO_MODE) return { success: true };
     try {
       await signInWithEmailAndPassword(auth, email, password);
       return { success: true };
@@ -57,6 +52,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const register = useCallback(async (email, password, displayName) => {
+    if (DEMO_MODE) return { success: true };
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(cred.user, { displayName });
@@ -80,6 +76,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    if (DEMO_MODE) return;
     await signOut(auth);
     setUser(null);
   }, []);
