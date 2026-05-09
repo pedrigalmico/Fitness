@@ -26,6 +26,11 @@ function PageShimmer() {
 
 const DEMO_PREFIX = "demo_";
 
+// Auto-seed when ?seed=1 is in the URL (used by portfolio embed iframes)
+if (new URLSearchParams(window.location.search).has("seed") && !localStorage.getItem(`${DEMO_PREFIX}ft_seeded`)) {
+  seedDemoData({ name: "Demo", age: 27, weight: 75, height: 178, goal: "recomp", level: "intermediate", activity: "moderate" });
+}
+
 function hasCompletedOnboarding() {
   return !!localStorage.getItem(`${DEMO_PREFIX}ft_seeded`);
 }
