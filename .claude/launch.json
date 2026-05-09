@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fittrack",
+      "runtimeExecutable": "/usr/bin/env",
+      "runtimeArgs": ["-C", "/Users/micopedrigal/Downloads/mico/Fitness/fittrack", "npm", "run", "dev", "--", "--port", "5173"],
+      "port": 5173
+    }
+  ]
+}
