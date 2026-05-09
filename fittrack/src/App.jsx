@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { HashRouter, Routes, Route, NavLink, Navigate } from "react-router-dom";
 import { Home as HomeIcon, Dumbbell, UtensilsCrossed, Brain, UserCircle, RotateCcw } from "lucide-react";
 import { AuthProvider } from "./AuthContext";
@@ -6,14 +7,23 @@ import Workout from "./pages/Workout";
 import Diet from "./pages/Diet";
 import Coach from "./pages/Coach";
 import Profile from "./pages/Profile";
+import Onboarding from "./pages/Onboarding";
+import { seedDemoData } from "./seedDemoData";
+
+const DEMO_PREFIX = "demo_";
+
+function hasCompletedOnboarding() {
+  return !!localStorage.getItem(`${DEMO_PREFIX}ft_seeded`);
+}
+
+function resetDemo() {
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith(DEMO_PREFIX))
+    .forEach((k) => localStorage.removeItem(k));
+  window.location.reload();
+}
 
 function DemoBanner() {
-  function handleReset() {
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith("demo_"));
-    keys.forEach((k) => localStorage.removeItem(k));
-    window.location.reload();
-  }
-
   return (
     <div
       className="flex items-center justify-between px-4 py-2 text-xs font-bold"
@@ -21,7 +31,7 @@ function DemoBanner() {
     >
       <span>DEMO MODE — data is local only</span>
       <button
-        onClick={handleReset}
+        onClick={resetDemo}
         className="flex items-center gap-1 px-2 py-1 rounded"
         style={{ background: "rgba(0,0,0,0.2)" }}
       >
@@ -33,6 +43,17 @@ function DemoBanner() {
 }
 
 function AppShell() {
+  const [ready, setReady] = useState(hasCompletedOnboarding);
+
+  function handleOnboardingComplete(profile) {
+    seedDemoData(profile);
+    setReady(true);
+  }
+
+  if (!ready) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
   return (
     <HashRouter>
       <div className="min-h-screen pb-20" style={{ background: "#0A0A12" }}>
