@@ -1,13 +1,13 @@
-import { useState, useCallback, useContext } from "react";
-import { AuthContext } from "../AuthContext";
+import { useState, useCallback } from "react";
+
+const DEMO_PREFIX = "demo_";
 
 export function useStorage(key, initialValue) {
-  const { user } = useContext(AuthContext);
-  const prefixedKey = user ? `${user.id}_${key}` : key;
+  const localKey = `${DEMO_PREFIX}${key}`;
 
   const [storedValue, setStoredValue] = useState(() => {
     try {
-      const item = localStorage.getItem(prefixedKey);
+      const item = localStorage.getItem(localKey);
       return item ? JSON.parse(item) : initialValue;
     } catch {
       return initialValue;
@@ -18,11 +18,11 @@ export function useStorage(key, initialValue) {
     (value) => {
       setStoredValue((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        localStorage.setItem(prefixedKey, JSON.stringify(next));
+        localStorage.setItem(localKey, JSON.stringify(next));
         return next;
       });
     },
-    [prefixedKey]
+    [localKey]
   );
 
   return [storedValue, setValue];

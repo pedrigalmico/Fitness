@@ -1,23 +1,42 @@
-import { useContext } from "react";
 import { HashRouter, Routes, Route, NavLink, Navigate } from "react-router-dom";
-import { Home as HomeIcon, Dumbbell, UtensilsCrossed, Brain, UserCircle, LayoutGrid } from "lucide-react";
-import { AuthContext, AuthProvider } from "./AuthContext";
-import Login from "./pages/Login";
+import { Home as HomeIcon, Dumbbell, UtensilsCrossed, Brain, UserCircle, RotateCcw } from "lucide-react";
+import { AuthProvider } from "./AuthContext";
 import Home from "./pages/Home";
 import Workout from "./pages/Workout";
 import Diet from "./pages/Diet";
 import Coach from "./pages/Coach";
 import Profile from "./pages/Profile";
-import Programs from "./pages/Programs";
+
+function DemoBanner() {
+  function handleReset() {
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith("demo_"));
+    keys.forEach((k) => localStorage.removeItem(k));
+    window.location.reload();
+  }
+
+  return (
+    <div
+      className="flex items-center justify-between px-4 py-2 text-xs font-bold"
+      style={{ background: "#FF6B35", color: "#fff" }}
+    >
+      <span>DEMO MODE — data is local only</span>
+      <button
+        onClick={handleReset}
+        className="flex items-center gap-1 px-2 py-1 rounded"
+        style={{ background: "rgba(0,0,0,0.2)" }}
+      >
+        <RotateCcw size={12} />
+        Reset
+      </button>
+    </div>
+  );
+}
 
 function AppShell() {
-  const { user } = useContext(AuthContext);
-
-  if (!user) return <Login />;
-
   return (
     <HashRouter>
       <div className="min-h-screen pb-20" style={{ background: "#0A0A12" }}>
+        <DemoBanner />
         <div className="max-w-[480px] mx-auto px-4 pt-6">
           <Routes>
             <Route path="/" element={<Home />} />
@@ -25,7 +44,6 @@ function AppShell() {
             <Route path="/diet" element={<Diet />} />
             <Route path="/coach" element={<Coach />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/programs" element={<Programs />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
