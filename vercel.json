@@ -1,5 +1,5 @@
 {
-  "root": "fittrack",
+  "rootDirectory": "fittrack",
   "buildCommand": "npm run build",
   "outputDirectory": "fittrack/dist",
   "installCommand": "npm install --prefix fittrack"
