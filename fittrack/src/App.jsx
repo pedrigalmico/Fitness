@@ -4,11 +4,11 @@ import { Home as HomeIcon, Dumbbell, UtensilsCrossed, Brain, UserCircle, RotateC
 import { AuthProvider } from "./AuthContext";
 import { seedDemoData } from "./seedDemoData";
 
-const Home      = lazy(() => import("./pages/Home"));
-const Workout   = lazy(() => import("./pages/Workout"));
-const Diet      = lazy(() => import("./pages/Diet"));
-const Coach     = lazy(() => import("./pages/Coach"));
-const Profile   = lazy(() => import("./pages/Profile"));
+const Home       = lazy(() => import("./pages/Home"));
+const Workout    = lazy(() => import("./pages/Workout"));
+const Diet       = lazy(() => import("./pages/Diet"));
+const Coach      = lazy(() => import("./pages/Coach"));
+const Profile    = lazy(() => import("./pages/Profile"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 
 function PageShimmer() {
@@ -28,16 +28,6 @@ const DEMO_PREFIX = "demo_";
 
 function hasCompletedOnboarding() {
   return !!localStorage.getItem(`${DEMO_PREFIX}ft_seeded`);
-}
-
-const DEFAULT_DEMO_PROFILE = {
-  name: "Demo", age: 28, weight: 76, height: 175,
-  goal: "recomp", level: "intermediate", activity: "moderate",
-};
-
-// Always seed on first load so onboarding/login is never shown in the demo
-if (!hasCompletedOnboarding()) {
-  seedDemoData(DEFAULT_DEMO_PROFILE);
 }
 
 function resetDemo() {
