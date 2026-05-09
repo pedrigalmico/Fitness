@@ -164,7 +164,7 @@ export default function Home() {
         )}
 
         <div className="space-y-1.5">
-          {weightLog.slice(-7).reverse().map((w) => (
+          {weightLog.slice(-3).reverse().map((w) => (
             <div key={w.date} className="flex justify-between text-xs">
               <span style={{ color: "#555" }}>{w.date}</span>
               <span className="font-bold text-white">{w.kg} kg</span>
