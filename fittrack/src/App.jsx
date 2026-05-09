@@ -1,14 +1,28 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { HashRouter, Routes, Route, NavLink, Navigate } from "react-router-dom";
 import { Home as HomeIcon, Dumbbell, UtensilsCrossed, Brain, UserCircle, RotateCcw } from "lucide-react";
 import { AuthProvider } from "./AuthContext";
-import Home from "./pages/Home";
-import Workout from "./pages/Workout";
-import Diet from "./pages/Diet";
-import Coach from "./pages/Coach";
-import Profile from "./pages/Profile";
-import Onboarding from "./pages/Onboarding";
 import { seedDemoData } from "./seedDemoData";
+
+const Home      = lazy(() => import("./pages/Home"));
+const Workout   = lazy(() => import("./pages/Workout"));
+const Diet      = lazy(() => import("./pages/Diet"));
+const Coach     = lazy(() => import("./pages/Coach"));
+const Profile   = lazy(() => import("./pages/Profile"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+
+function PageShimmer() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <span
+        className="text-[11px] font-bold tracking-widest uppercase animate-pulse"
+        style={{ color: "#FF6B35" }}
+      >
+        Loading…
+      </span>
+    </div>
+  );
+}
 
 const DEMO_PREFIX = "demo_";
 
@@ -61,7 +75,11 @@ function AppShell() {
   }
 
   if (!ready) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
+    return (
+      <Suspense fallback={<PageShimmer />}>
+        <Onboarding onComplete={handleOnboardingComplete} />
+      </Suspense>
+    );
   }
 
   return (
@@ -69,14 +87,16 @@ function AppShell() {
       <div className="min-h-screen pb-20" style={{ background: "#0A0A12" }}>
         <DemoBanner />
         <div className="max-w-[480px] mx-auto px-4 pt-6">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/workout" element={<Workout />} />
-            <Route path="/diet" element={<Diet />} />
-            <Route path="/coach" element={<Coach />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+          <Suspense fallback={<PageShimmer />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/workout" element={<Workout />} />
+              <Route path="/diet" element={<Diet />} />
+              <Route path="/coach" element={<Coach />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Suspense>
         </div>
 
         <nav
