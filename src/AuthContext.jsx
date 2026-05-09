@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useCallback } from "react";
+import { createContext, useState, useEffect, useCallback, useMemo } from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -10,9 +10,20 @@ import { auth } from "./firebase";
 
 export const AuthContext = createContext(null);
 
+const DEMO_MODE = new URLSearchParams(window.location.search).has("seed");
+const DEMO_USER = { uid: "demo", email: "demo@fittrack.app", username: "Demo" };
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined); // undefined = loading
   const [loading, setLoading] = useState(true);
+
+  if (DEMO_MODE) {
+    return (
+      <AuthContext.Provider value={{ user: DEMO_USER, login: async () => {}, register: async () => {}, logout: async () => {} }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {

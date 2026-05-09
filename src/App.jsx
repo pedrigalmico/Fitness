@@ -1,4 +1,4 @@
-import { useContext, useState, useCallback } from "react";
+import { useContext, useState, useCallback, useEffect } from "react";
 import { HashRouter, Routes, Route, NavLink, Navigate, useNavigate } from "react-router-dom";
 import { Home as HomeIcon, Dumbbell, UtensilsCrossed } from "lucide-react";
 import { AuthContext, AuthProvider } from "./AuthContext";
@@ -10,6 +10,37 @@ import Workout from "./pages/Workout";
 import Diet from "./pages/Diet";
 import TemplateBrowser from "./pages/TemplateBrowser";
 import Settings from "./pages/Settings";
+
+const DEMO_MODE = new URLSearchParams(window.location.search).has("seed");
+
+function seedDemoData() {
+  const today = new Date();
+  const d = (offset) => {
+    const dt = new Date(today);
+    dt.setDate(today.getDate() - offset);
+    return dt.toISOString().split("T")[0];
+  };
+  if (!localStorage.getItem("ft_onboarded")) {
+    localStorage.setItem("ft_onboarded", "true");
+    localStorage.setItem("ft_stats", JSON.stringify({ name: "Demo", age: 27, weight: 75, height: 178 }));
+    localStorage.setItem("ft_equipment", JSON.stringify(["barbell", "dumbbell", "bodyweight"]));
+    localStorage.setItem("ft_template", '"recomp"');
+    localStorage.setItem("ft_template_start", JSON.stringify(d(28)));
+    localStorage.setItem("ft_logs", JSON.stringify({
+      [d(1)]: { day: "A", completed: true, ts: Date.now() },
+      [d(3)]: { day: "B", completed: true, ts: Date.now() },
+      [d(5)]: { day: "C", completed: true, ts: Date.now() },
+      [d(7)]: { day: "D", completed: true, ts: Date.now() },
+      [d(8)]: { day: "A", completed: true, ts: Date.now() },
+      [d(10)]: { day: "B", completed: true, ts: Date.now() },
+    }));
+    localStorage.setItem("ft_weight", JSON.stringify([
+      { date: d(14), kg: 76.2 }, { date: d(11), kg: 75.8 },
+      { date: d(7), kg: 75.5 },  { date: d(4), kg: 75.1 },
+      { date: d(1), kg: 74.9 },
+    ]));
+  }
+}
 
 function MainApp() {
   const navigate = useNavigate();
@@ -64,6 +95,10 @@ function AppShell() {
   const [, setTemplate] = useStorage("ft_template", "recomp");
   const [, setTemplateStart] = useStorage("ft_template_start", null);
 
+  useEffect(() => {
+    if (DEMO_MODE) seedDemoData();
+  }, []);
+
   const handleOnboardingComplete = useCallback(({ stats, equipment, templateId }) => {
     setStats(stats);
     setEquipment(equipment);
@@ -72,14 +107,16 @@ function AppShell() {
     setOnboarded(true);
   }, [setStats, setEquipment, setTemplate, setTemplateStart, setOnboarded]);
 
-  if (!user) return <Login />;
-  if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete} />;
+  if (DEMO_MODE || (user && onboarded)) {
+    return (
+      <HashRouter>
+        <MainApp />
+      </HashRouter>
+    );
+  }
 
-  return (
-    <HashRouter>
-      <MainApp />
-    </HashRouter>
-  );
+  if (!user) return <Login />;
+  return <Onboarding onComplete={handleOnboardingComplete} />;
 }
 
 export default function App() {
