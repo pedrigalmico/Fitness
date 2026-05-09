@@ -1,0 +1,1 @@
+import{o as e,r as t}from"./jsx-runtime-DEOoGf5i.js";var n=e(t(),1),r=`demo_`;function i(e,t){let i=`${r}${e}`,[a,o]=(0,n.useState)(()=>{try{let e=localStorage.getItem(i);return e?JSON.parse(e):t}catch{return t}});return[a,(0,n.useCallback)(e=>{o(t=>{let n=typeof e==`function`?e(t):e;return localStorage.setItem(i,JSON.stringify(n)),n})},[i])]}export{i as t};
