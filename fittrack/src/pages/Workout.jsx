@@ -20,8 +20,13 @@ const ALL_TABS = [
   { id: "rest",    type: "rest",    label: "Sun" },
 ];
 
+function getTodayTab() {
+  const dow = new Date().getDay();
+  return ALL_TABS[dow === 0 ? 6 : dow - 1]?.id ?? "A";
+}
+
 export default function Workout() {
-  const [selectedTab, setSelectedTab] = useState("A");
+  const [selectedTab, setSelectedTab] = useState(getTodayTab);
   const [logs, setLogs] = useStorage("ft_logs", {});
   const [setLog, setSetLog] = useStorage("ft_set_log", {});
   const [cardioLog, setCardioLog] = useStorage("ft_cardio", {});

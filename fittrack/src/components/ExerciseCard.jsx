@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, Check, TrendingUp, Lightbulb } from "lucide-react";
 import { isSetDone, getProgressionSuggestion, getLastSession, formatLastSession } from "../lib/progression";
 
-const isTimeReps = (reps) => typeof reps === "string";
+const isTimeReps = (reps) => typeof reps === "string" && /\d+s$/.test(reps);
 
 export default function ExerciseCard({ exercise, dayColor, today, setLog, onCommitSet, onClearSet }) {
   const lastSession = getLastSession(setLog, exercise, today);
@@ -60,6 +60,18 @@ export default function ExerciseCard({ exercise, dayColor, today, setLog, onComm
     const weight = d.weight === "" || isBodyweight ? null : Number(d.weight);
     const reps = d.reps === "" ? null : isTimed ? d.reps : Number(d.reps);
     onCommitSet(exercise.id, i, { weight, reps, ts: Date.now() }, exercise);
+
+    if (d.weight !== "") {
+      setDrafts((prev) => {
+        const next = [...prev];
+        for (let j = i + 1; j < next.length; j++) {
+          if (!isSetDone(sets[j])) {
+            next[j] = { ...next[j], weight: d.weight };
+          }
+        }
+        return next;
+      });
+    }
   };
 
   return (

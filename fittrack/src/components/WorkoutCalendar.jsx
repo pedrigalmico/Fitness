@@ -1,18 +1,5 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { WORKOUT_PLAN, CARDIO_PLAN } from "../data/workouts";
-
-const DAY_COLORS = { A: "#FF6B35", B: "#4ECDC4", C: "#A855F7", D: "#F59E0B" };
-const CARDIO_COLOR = "#ef4444";
-
-// Map weekday name → scheduled workout day label for the current plan
-const WEEKDAY_SCHEDULE = {};
-Object.entries(WORKOUT_PLAN).forEach(([key, plan]) => {
-  WEEKDAY_SCHEDULE[plan.day] = { key, color: plan.color, label: plan.label.split("—")[1]?.trim() ?? key };
-});
-CARDIO_PLAN.forEach((c) => {
-  WEEKDAY_SCHEDULE[c.day] = { key: null, color: CARDIO_COLOR, label: c.type, isCardio: true, cardio: c };
-});
 
 function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
@@ -23,7 +10,7 @@ function getFirstDayOfWeek(year, month) {
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const ACTIVE_COLOR = "#F59E0B";
 
 export default function WorkoutCalendar({ logs = {}, cardioLogs = {} }) {
   const now = new Date();
@@ -47,7 +34,6 @@ export default function WorkoutCalendar({ logs = {}, cardioLogs = {} }) {
   const cells = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  // pad to full rows
   while (cells.length % 7 !== 0) cells.push(null);
 
   const pad = (n) => String(n).padStart(2, "0");
@@ -96,94 +82,39 @@ export default function WorkoutCalendar({ logs = {}, cardioLogs = {} }) {
           const ds = dateStr(day);
           const isToday = ds === todayStr;
           const isFuture = ds > todayStr;
-          const dow = (firstDow + day - 1) % 7;
-          const dayName = FULL_DAYS[dow];
-          const scheduled = WEEKDAY_SCHEDULE[dayName];
-
-          const logEntry = logs[ds];
-          const workoutDone = logEntry?.completed;
-          const cardioDone = cardioLogs[ds]?.completed;
-
-          // Colors for this cell
-          const workoutColor = workoutDone
-            ? DAY_COLORS[logEntry.day] ?? "#22C55E"
-            : null;
-          const scheduledColor = scheduled && !isFuture ? scheduled.color : null;
+          const didWorkout = logs[ds]?.completed;
+          const didCardio = cardioLogs[ds]?.completed;
+          const active = didWorkout || didCardio;
 
           return (
             <div key={ds} className="flex flex-col items-center py-0.5">
               <div
-                className="w-8 h-8 rounded-xl flex flex-col items-center justify-center relative"
+                className="w-8 h-8 rounded-xl flex items-center justify-center"
                 style={{
-                  background: isToday
-                    ? "rgba(255,107,53,0.2)"
-                    : workoutDone
-                      ? `${workoutColor}20`
-                      : "transparent",
-                  border: isToday ? "1px solid #FF6B35" : "1px solid transparent",
+                  background: active ? `${ACTIVE_COLOR}25` : "transparent",
+                  border: isToday
+                    ? `1.5px solid ${ACTIVE_COLOR}`
+                    : "1.5px solid transparent",
                 }}
               >
                 <span
                   className="text-[11px] font-black leading-none"
                   style={{
                     color: isToday
-                      ? "#FF6B35"
-                      : workoutDone
-                        ? workoutColor
+                      ? ACTIVE_COLOR
+                      : active
+                        ? ACTIVE_COLOR
                         : isFuture
                           ? "#333"
-                          : "#777",
+                          : "#555",
                   }}
                 >
                   {day}
                 </span>
-
-                {/* Dot indicators */}
-                <div className="flex gap-0.5 mt-0.5">
-                  {workoutDone && (
-                    <span
-                      className="w-1 h-1 rounded-full"
-                      style={{ background: workoutColor }}
-                    />
-                  )}
-                  {cardioDone && (
-                    <span
-                      className="w-1 h-1 rounded-full"
-                      style={{ background: CARDIO_COLOR }}
-                    />
-                  )}
-                  {/* Scheduled but not done — tiny outline dot */}
-                  {!workoutDone && !cardioDone && scheduled && !isFuture && (
-                    <span
-                      className="w-1 h-1 rounded-full"
-                      style={{ border: `1px solid ${scheduled.color}`, background: "transparent" }}
-                    />
-                  )}
-                </div>
               </div>
             </div>
           );
         })}
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 pt-3" style={{ borderTop: "1px solid #1A1A2E" }}>
-        {Object.entries(DAY_COLORS).map(([key, color]) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full" style={{ background: color }} />
-            <span className="text-[10px] font-bold" style={{ color: "#555" }}>
-              {WORKOUT_PLAN[key]?.label.split("—")[1]?.trim()}
-            </span>
-          </div>
-        ))}
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full" style={{ background: CARDIO_COLOR }} />
-          <span className="text-[10px] font-bold" style={{ color: "#555" }}>Cardio</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full border" style={{ borderColor: "#555", background: "transparent" }} />
-          <span className="text-[10px] font-bold" style={{ color: "#555" }}>Scheduled</span>
-        </div>
       </div>
     </div>
   );
