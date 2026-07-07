@@ -9,21 +9,19 @@ import Ring from "../components/Ring";
 import StatCard from "../components/StatCard";
 import GoalBadge from "../components/GoalBadge";
 import DotCalendar from "../components/DotCalendar";
+import { toDateStr, todayStr as today, addDays, weekStart } from "../lib/dates";
 
-const today = () => new Date().toISOString().split("T")[0];
-
+// Consecutive days with any completed log (workout, cardio, or rest),
+// counting back from today — or yesterday, if today isn't logged yet.
 const calcStreak = (logs) => {
-  const dates = Object.keys(logs)
-    .filter((d) => logs[d]?.completed)
-    .sort()
-    .reverse();
-  if (!dates.length) return 0;
-  let count = 0;
+  const completed = new Set(Object.keys(logs).filter((d) => logs[d]?.completed));
+  if (!completed.size) return 0;
   let cursor = new Date();
-  for (const d of dates) {
-    const diff = Math.round((cursor - new Date(d)) / 86400000);
-    if (diff <= 1) { count++; cursor = new Date(d); }
-    else break;
+  if (!completed.has(toDateStr(cursor))) cursor = addDays(cursor, -1);
+  let count = 0;
+  while (completed.has(toDateStr(cursor))) {
+    count++;
+    cursor = addDays(cursor, -1);
   }
   return count;
 };
@@ -41,15 +39,18 @@ export default function Home() {
   const plan = useMemo(() => getPlan(templateId, equipment, stats), [templateId, equipment, stats]);
 
   const streak = calcStreak(logs);
-  const totalSessions = Object.values(logs).filter((l) => l?.completed).length;
+  const totalSessions = Object.values(logs).filter((l) => l?.completed && l?.type !== "rest").length;
 
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
-  const thisWeek = Object.keys(logs).filter((d) => {
-    const date = new Date(d);
-    return date >= weekStart && logs[d]?.completed;
-  }).length;
+  const weekStartStr = toDateStr(weekStart());
+  const thisWeek = Object.keys(logs).filter(
+    (d) => d >= weekStartStr && logs[d]?.completed && logs[d]?.type !== "rest"
+  ).length;
+
+  // Weekly target = number of scheduled training days (lifting + cardio)
+  const weeklyTarget = new Set([
+    ...plan.schedule.map((s) => s.day),
+    ...plan.cardio.map((c) => c.day),
+  ]).size;
 
   const todayDiet = diet[today()] || {};
   const mealsChecked = plan.meals.filter((m) => todayDiet[m.id]).length;
@@ -106,7 +107,7 @@ export default function Home() {
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <StatCard icon={<Flame size={16} />} label="Streak" value={`${streak}d`} color="#FF6B35" />
         <StatCard icon={<Trophy size={16} />} label="Total" value={totalSessions} color="#4ECDC4" />
-        <StatCard icon={<Calendar size={16} />} label="Week" value={`${thisWeek}/4`} color="#A855F7" />
+        <StatCard icon={<Calendar size={16} />} label="Week" value={`${thisWeek}/${weeklyTarget}`} color="#A855F7" />
       </div>
 
       {/* Diet + Workout status */}

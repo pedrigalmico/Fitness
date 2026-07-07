@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
-import { CheckCircle, Heart, ExternalLink, Moon, Footprints } from "lucide-react";
+import { CheckCircle, Heart, ExternalLink, Moon, Footprints, ChevronLeft, ChevronRight } from "lucide-react";
 import { useStorage } from "../hooks/useStorage";
 import { getPlan } from "../data/planEngine";
+import { toDateStr, todayStr, addDays, weekStart } from "../lib/dates";
 import ExerciseCard from "../components/ExerciseCard";
 
-const today = () => new Date().toISOString().split("T")[0];
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -33,7 +33,7 @@ function CircuitCard({ exercise, dayColor }) {
   );
 }
 
-function CardioCard({ cardio, templateColor }) {
+function CardioCard({ cardio }) {
   return (
     <div className="rounded-2xl p-4" style={{ background: "#0F0F1E", border: "1px solid #1A1A2E" }}>
       <div className="flex items-center justify-between mb-2">
@@ -106,6 +106,23 @@ function buildWeek(schedule, cardio) {
   return week;
 }
 
+function CompletedBanner({ label, onUndo }) {
+  return (
+    <div
+      className="rounded-2xl p-4 flex flex-col items-center gap-1"
+      style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)" }}
+    >
+      <div className="flex items-center gap-2">
+        <CheckCircle size={20} color="#22C55E" />
+        <span className="text-sm font-black" style={{ color: "#22C55E" }}>{label}</span>
+      </div>
+      <button onClick={onUndo} className="text-[10px] font-bold hover:underline" style={{ color: "#555" }}>
+        Undo
+      </button>
+    </div>
+  );
+}
+
 export default function Workout() {
   const [templateId] = useStorage("ft_template", "recomp");
   const [equipment] = useStorage("ft_equipment", []);
@@ -116,38 +133,70 @@ export default function Workout() {
   const plan = useMemo(() => getPlan(templateId, equipment, stats), [templateId, equipment, stats]);
   const week = useMemo(() => buildWeek(plan.schedule, plan.cardio), [plan.schedule, plan.cardio]);
 
-  // Default to today's day of week
+  // Week navigation: 0 = current week, negative = past weeks
+  const [weekOffset, setWeekOffset] = useState(0);
   const todayDow = new Date().getDay();
   const [selectedIdx, setSelectedIdx] = useState(todayDow);
 
+  const weekDates = useMemo(() => {
+    const start = weekStart(weekOffset);
+    return Array.from({ length: 7 }, (_, i) => toDateStr(addDays(start, i)));
+  }, [weekOffset]);
+
+  const weekLabel = useMemo(() => {
+    if (weekOffset === 0) return "This Week";
+    if (weekOffset === -1) return "Last Week";
+    const fmt = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const start = weekStart(weekOffset);
+    return `${fmt(start)} – ${fmt(addDays(start, 6))}`;
+  }, [weekOffset]);
+
   const selected = week[selectedIdx];
-  const todayStr = today();
-  const isCompleted = logs[todayStr]?.completed && logs[todayStr]?.day === selected?.key;
+  const selectedDateStr = weekDates[selectedIdx];
+  const tStr = todayStr();
+  const isToday = selectedDateStr === tStr;
+  const isPast = selectedDateStr < tStr;
+  const isFuture = selectedDateStr > tStr;
+  const isCompleted = !!logs[selectedDateStr]?.completed;
 
   const toggleSet = (exerciseId, setIdx) => {
-    const key = `${todayStr}_${exerciseId}_${setIdx}`;
+    const key = `${selectedDateStr}_${exerciseId}_${setIdx}`;
     setSets((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const getExerciseSets = (exercise) => {
     if (!exercise.sets) return [];
     return Array.from({ length: exercise.sets }, (_, i) =>
-      sets[`${todayStr}_${exercise.id}_${i}`] || false
+      sets[`${selectedDateStr}_${exercise.id}_${i}`] || false
     );
   };
 
   const liftingDay = selected?.lifting;
   const isLifting = selected?.type === "lifting";
-  const isCircuitOrCardioSession = selected?.type === "circuit" || selected?.type === "cardio_session";
   const allSetsComplete = isLifting && liftingDay?.exercises.every((ex) =>
     getExerciseSets(ex).every(Boolean)
   );
 
   const markComplete = () => {
+    if (isFuture) return;
     setLogs((prev) => ({
       ...prev,
-      [todayStr]: { day: selected.key || selected.dayName, completed: true, ts: Date.now() },
+      [selectedDateStr]: {
+        day: selected.key || selected.dayName,
+        type: selected.type,
+        completed: true,
+        ts: Date.now(),
+        ...(isPast ? { backfilled: true } : {}),
+      },
     }));
+  };
+
+  const unmarkComplete = () => {
+    setLogs((prev) => {
+      const next = { ...prev };
+      delete next[selectedDateStr];
+      return next;
+    });
   };
 
   // Day selector colors
@@ -180,11 +229,32 @@ export default function Workout() {
         </p>
       </div>
 
+      {/* Week Navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setWeekOffset((o) => o - 1)}
+          className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+        >
+          <ChevronLeft size={18} style={{ color: "#888" }} />
+        </button>
+        <span className="text-xs font-bold uppercase" style={{ color: weekOffset === 0 ? "#555" : "#FF6B35" }}>
+          {weekLabel}
+        </span>
+        <button
+          onClick={() => setWeekOffset((o) => Math.min(0, o + 1))}
+          disabled={weekOffset === 0}
+          className="p-1.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-30"
+        >
+          <ChevronRight size={18} style={{ color: "#888" }} />
+        </button>
+      </div>
+
       {/* Full Week Day Selector */}
       <div className="grid grid-cols-7 gap-1">
         {week.map((d, i) => {
           const active = i === selectedIdx;
-          const isToday = i === todayDow;
+          const isTodayCell = weekOffset === 0 && i === todayDow;
+          const cellCompleted = !!logs[weekDates[i]]?.completed;
           const style = getDayStyle(d, active);
           return (
             <button
@@ -202,10 +272,10 @@ export default function Workout() {
               <span className="text-xs font-black mt-0.5" style={{ color: style.color }}>
                 {getDayIcon(d)}
               </span>
-              {isToday && (
+              {(cellCompleted || isTodayCell) && (
                 <div
                   className="absolute -bottom-0.5 w-1 h-1 rounded-full"
-                  style={{ background: "#FF6B35" }}
+                  style={{ background: cellCompleted ? "#22C55E" : "#FF6B35" }}
                 />
               )}
             </button>
@@ -222,36 +292,59 @@ export default function Workout() {
           }}
         />
         <h2 className="text-sm font-heading font-bold text-white uppercase">{selected.label}</h2>
-        <span className="text-xs" style={{ color: "#555" }}>— {selected.dayName}</span>
-        {selectedIdx === todayDow && (
+        <span className="text-xs" style={{ color: "#555" }}>
+          — {new Date(selectedDateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </span>
+        {isToday && (
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#FF6B3520", color: "#FF6B35" }}>
             TODAY
+          </span>
+        )}
+        {isPast && !isCompleted && (
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#1A1A2E", color: "#888" }}>
+            MISSED?
           </span>
         )}
       </div>
 
       {/* ─── REST DAY ─── */}
       {selected.type === "rest" && (
-        <div className="rounded-2xl p-8 text-center" style={{ background: "#0F0F1E", border: "1px solid #1A1A2E" }}>
-          <Moon size={40} className="mx-auto mb-3" style={{ color: "#333" }} />
-          <h3 className="text-base font-heading font-bold text-white uppercase mb-1">Rest Day</h3>
-          <p className="text-xs" style={{ color: "#555" }}>
-            Recovery is when muscles grow. Sleep 7-8 hours, hit your protein, drink 2.5-3L water.
-          </p>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2 justify-center">
-              <span className="text-xs" style={{ color: "#22C55E" }}>&#10003;</span>
-              <span className="text-xs" style={{ color: "#888" }}>Stretch or foam roll 10 min</span>
-            </div>
-            <div className="flex items-center gap-2 justify-center">
-              <span className="text-xs" style={{ color: "#22C55E" }}>&#10003;</span>
-              <span className="text-xs" style={{ color: "#888" }}>Light walk if you feel like it</span>
-            </div>
-            <div className="flex items-center gap-2 justify-center">
-              <span className="text-xs" style={{ color: "#22C55E" }}>&#10003;</span>
-              <span className="text-xs" style={{ color: "#888" }}>Hit your protein and water goals</span>
+        <div className="space-y-3">
+          <div className="rounded-2xl p-8 text-center" style={{ background: "#0F0F1E", border: "1px solid #1A1A2E" }}>
+            <Moon size={40} className="mx-auto mb-3" style={{ color: "#333" }} />
+            <h3 className="text-base font-heading font-bold text-white uppercase mb-1">Rest Day</h3>
+            <p className="text-xs" style={{ color: "#555" }}>
+              Recovery is when muscles grow. Sleep 7-8 hours, hit your protein, drink 2.5-3L water.
+            </p>
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center gap-2 justify-center">
+                <span className="text-xs" style={{ color: "#22C55E" }}>&#10003;</span>
+                <span className="text-xs" style={{ color: "#888" }}>Stretch or foam roll 10 min</span>
+              </div>
+              <div className="flex items-center gap-2 justify-center">
+                <span className="text-xs" style={{ color: "#22C55E" }}>&#10003;</span>
+                <span className="text-xs" style={{ color: "#888" }}>Light walk if you feel like it</span>
+              </div>
+              <div className="flex items-center gap-2 justify-center">
+                <span className="text-xs" style={{ color: "#22C55E" }}>&#10003;</span>
+                <span className="text-xs" style={{ color: "#888" }}>Hit your protein and water goals</span>
+              </div>
             </div>
           </div>
+
+          {!isFuture && (
+            isCompleted ? (
+              <CompletedBanner label="Rest Day Logged!" onUndo={unmarkComplete} />
+            ) : (
+              <button
+                onClick={markComplete}
+                className="w-full py-4 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+                style={{ background: "#333" }}
+              >
+                Log Rest Day {"💤"}
+              </button>
+            )
+          )}
         </div>
       )}
 
@@ -263,27 +356,22 @@ export default function Workout() {
             <span className="text-xs font-bold uppercase" style={{ color: "#555" }}>Treadmill Session</span>
           </div>
           {selected.cardioSessions.map((c) => (
-            <CardioCard key={c.id} cardio={c} templateColor={plan.template.color} />
+            <CardioCard key={c.id} cardio={c} />
           ))}
 
-          <button
-            onClick={markComplete}
-            disabled={isCompleted}
-            className="w-full py-4 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-40"
-            style={{
-              background: isCompleted
-                ? "rgba(34,197,94,0.1)"
-                : "linear-gradient(135deg, #ef4444, #ef4444cc)",
-              border: isCompleted ? "1px solid rgba(34,197,94,0.3)" : "none",
-              color: isCompleted ? "#22C55E" : "#fff",
-            }}
-          >
-            {isCompleted ? (
-              <><CheckCircle size={18} /> Cardio Done!</>
+          {!isFuture && (
+            isCompleted ? (
+              <CompletedBanner label="Cardio Done!" onUndo={unmarkComplete} />
             ) : (
-              <>Mark Cardio Complete {"🔥"}</>
-            )}
-          </button>
+              <button
+                onClick={markComplete}
+                className="w-full py-4 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, #ef4444, #ef4444cc)" }}
+              >
+                Mark Cardio Complete {"🔥"}
+              </button>
+            )
+          )}
         </div>
       )}
 
@@ -327,54 +415,33 @@ export default function Workout() {
                 <span className="text-xs font-bold uppercase" style={{ color: "#555" }}>Post-Workout Cardio</span>
               </div>
               {selected.cardioSessions.map((c) => (
-                <CardioCard key={c.id} cardio={c} templateColor={plan.template.color} />
+                <CardioCard key={c.id} cardio={c} />
               ))}
             </div>
           )}
 
           {/* Complete Button */}
-          {isLifting ? (
+          {!isFuture && (
             isCompleted ? (
-              <div
-                className="rounded-2xl p-4 flex items-center justify-center gap-2"
-                style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)" }}
-              >
-                <CheckCircle size={20} color="#22C55E" />
-                <span className="text-sm font-black" style={{ color: "#22C55E" }}>Workout Complete!</span>
-              </div>
+              <CompletedBanner
+                label={isLifting ? "Workout Complete!" : "Session Complete!"}
+                onUndo={unmarkComplete}
+              />
             ) : (
               <button
                 onClick={markComplete}
-                disabled={!allSetsComplete}
-                className="w-full py-4 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-40"
+                disabled={isLifting && isToday && !allSetsComplete}
+                className="w-full py-4 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-40"
                 style={{
-                  background: allSetsComplete
-                    ? `linear-gradient(135deg, ${plan.template.color}, ${plan.template.color}cc)`
-                    : "#1A1A2E",
+                  background:
+                    isLifting && isToday && !allSetsComplete
+                      ? "#1A1A2E"
+                      : `linear-gradient(135deg, ${plan.template.color}, ${plan.template.color}cc)`,
                 }}
               >
-                Mark Workout Complete {"🔥"}
+                {isPast ? "Mark as Completed" : isLifting ? "Mark Workout Complete" : "Mark Session Complete"} {"🔥"}
               </button>
             )
-          ) : (
-            <button
-              onClick={markComplete}
-              disabled={isCompleted}
-              className="w-full py-4 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-40"
-              style={{
-                background: isCompleted
-                  ? "rgba(34,197,94,0.1)"
-                  : `linear-gradient(135deg, ${plan.template.color}, ${plan.template.color}cc)`,
-                border: isCompleted ? "1px solid rgba(34,197,94,0.3)" : "none",
-                color: isCompleted ? "#22C55E" : "#fff",
-              }}
-            >
-              {isCompleted ? (
-                <><CheckCircle size={18} /> Session Complete!</>
-              ) : (
-                <>Mark Session Complete {"🔥"}</>
-              )}
-            </button>
           )}
         </>
       )}

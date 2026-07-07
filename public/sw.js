@@ -1,4 +1,4 @@
-const CACHE_NAME = "fittrack-v1";
+const CACHE_NAME = "fittrack-v2";
 
 // Install: cache the app shell
 self.addEventListener("install", (event) => {
@@ -20,15 +20,22 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch: network first, fallback to cache
+// Fetch: network first, fallback to cache.
+// Only same-origin GETs — Firestore/auth traffic must pass through untouched,
+// and Cache.put() throws on non-GET requests.
 self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET" || !request.url.startsWith(self.location.origin)) return;
+
   event.respondWith(
-    fetch(event.request)
+    fetch(request)
       .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(request))
   );
 });

@@ -3,10 +3,13 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
+  sendPasswordResetEmail,
   signOut,
   updateProfile,
 } from "firebase/auth";
-import { auth } from "./firebase";
+import { auth, googleProvider } from "./firebase";
 
 export const AuthContext = createContext(null);
 
@@ -20,7 +23,7 @@ export function AuthProvider({ children }) {
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          username: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+          username: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Athlete",
         });
       } else {
         setUser(null);
@@ -68,6 +71,44 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const loginWithGoogle = useCallback(async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      return { success: true };
+    } catch (err) {
+      if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+        return { success: false, error: "" };
+      }
+      if (err.code === "auth/popup-blocked") {
+        // Popups are blocked in some installed-PWA contexts; full-page redirect works there
+        await signInWithRedirect(auth, googleProvider);
+        return { success: true };
+      }
+      const msg =
+        err.code === "auth/operation-not-allowed"
+          ? "Google sign-in isn't enabled yet. Enable it in Firebase Console → Authentication → Sign-in method."
+          : err.code === "auth/network-request-failed"
+          ? "Network error. Check your connection and try again."
+          : err.message;
+      return { success: false, error: msg };
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (email) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return { success: true };
+    } catch (err) {
+      const msg =
+        err.code === "auth/invalid-email"
+          ? "Invalid email address"
+          : err.code === "auth/user-not-found"
+          ? "No account found with that email"
+          : err.message;
+      return { success: false, error: msg };
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     await signOut(auth);
     setUser(null);
@@ -85,7 +126,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, loginWithGoogle, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,7 +1,8 @@
-import { useContext, useState, useCallback } from "react";
+import { useContext, useCallback } from "react";
 import { HashRouter, Routes, Route, NavLink, Navigate, useNavigate } from "react-router-dom";
 import { Home as HomeIcon, Dumbbell, UtensilsCrossed } from "lucide-react";
 import { AuthContext, AuthProvider } from "./AuthContext";
+import { StorageProvider } from "./storage/StorageProvider";
 import { useStorage } from "./hooks/useStorage";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
@@ -58,7 +59,7 @@ function MainApp() {
 
 function AppShell() {
   const { user } = useContext(AuthContext);
-  const [onboarded, setOnboarded] = useStorage("ft_onboarded", false);
+  const [onboarded, setOnboarded, onboardedLoaded] = useStorage("ft_onboarded", false);
   const [, setStats] = useStorage("ft_stats", {});
   const [, setEquipment] = useStorage("ft_equipment", []);
   const [, setTemplate] = useStorage("ft_template", "recomp");
@@ -73,6 +74,18 @@ function AppShell() {
   }, [setStats, setEquipment, setTemplate, setTemplateStart, setOnboarded]);
 
   if (!user) return <Login />;
+  if (!onboardedLoaded) {
+    // Wait for cloud data before deciding between onboarding and the app,
+    // so a returning user on a new device isn't sent through onboarding.
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0A12" }}>
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-3" style={{ borderColor: "#FF6B35", borderTopColor: "transparent" }} />
+          <p className="text-xs font-bold" style={{ color: "#555" }}>Syncing your data...</p>
+        </div>
+      </div>
+    );
+  }
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   return (
@@ -85,7 +98,9 @@ function AppShell() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <StorageProvider>
+        <AppShell />
+      </StorageProvider>
     </AuthProvider>
   );
 }

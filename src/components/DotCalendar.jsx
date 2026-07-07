@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { toDateStr, todayStr } from "../lib/dates";
 
 const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -9,8 +10,7 @@ export default function DotCalendar({ logs = {}, diet = {}, mealCount = 5 }) {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
 
-  const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
+  const tStr = todayStr();
 
   const firstDay = new Date(month.year, month.month, 1).getDay();
   const daysInMonth = new Date(month.year, month.month + 1, 0).getDate();
@@ -24,10 +24,7 @@ export default function DotCalendar({ logs = {}, diet = {}, mealCount = 5 }) {
   const next = () =>
     setMonth((m) => (m.month === 11 ? { year: m.year + 1, month: 0 } : { ...m, month: m.month + 1 }));
 
-  const getDateStr = (day) => {
-    const d = new Date(month.year, month.month, day);
-    return d.toISOString().split("T")[0];
-  };
+  const getDateStr = (day) => toDateStr(new Date(month.year, month.month, day));
 
   const getActivity = (day) => {
     const dateStr = getDateStr(day);
@@ -75,9 +72,9 @@ export default function DotCalendar({ logs = {}, diet = {}, mealCount = 5 }) {
             return <div key={`empty-${i}`} className="flex justify-center py-1" />;
           }
           const dateStr = getDateStr(day);
-          const isToday = dateStr === todayStr;
+          const isToday = dateStr === tStr;
           const activity = getActivity(day);
-          const isFuture = new Date(dateStr) > today;
+          const isFuture = dateStr > tStr;
 
           let dotColor = "#1A1A2E";
           if (!isFuture) {

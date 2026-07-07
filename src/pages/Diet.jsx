@@ -3,8 +3,7 @@ import { ChevronDown, ChevronUp, AlertCircle, BookOpen } from "lucide-react";
 import { useStorage } from "../hooks/useStorage";
 import { getPlan } from "../data/planEngine";
 import MealRow from "../components/MealRow";
-
-const today = () => new Date().toISOString().split("T")[0];
+import { todayStr as today } from "../lib/dates";
 
 const CHOLESTEROL_TIPS = [
   "Use olive oil instead of vegetable oil",
